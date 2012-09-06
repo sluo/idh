@@ -79,7 +79,10 @@ public class BilateralFilter {
      * For this function, sigma = sigmaRange * sqrt(5), where sigmaRange 
      * is the half-width of the range function for the bilateral filter.
      */
-    TUKEY
+    TUKEY,
+
+
+    TUKEY_ANGLE
   }
 
   /**
@@ -123,6 +126,8 @@ public class BilateralFilter {
       _fx = new HuberFunction(_sigmaR);
     } else if (type==Type.TUKEY) {
       _fx = new TukeyFunction(_sigmaR);
+    } else if (type==Type.TUKEY_ANGLE) {
+      _fx = new TukeyAngleFunction(_sigmaR);
     }
   }
 
@@ -160,6 +165,22 @@ public class BilateralFilter {
   public void apply(float[][] x, float[][] y) {
     _rgf = getRgf();
     apply(_rgf,_fx,x,y);
+  }
+  public void applyAB(float[][] xa, float[][] xb, float[][] y) {
+    _rgf = getRgf();
+    applyAB(_rgf,_fx,xa,xb,y);
+  }
+  public void applyABC(
+    float[][] xa, float[][] xb, float[][] xc, float[][] y)
+  {
+    _rgf = getRgf();
+    applyABC(_rgf,_fx,xa,xb,xc,y);
+  }
+  public void applyForAngle(
+    float[][] xa, float[][] xb, float[][] xc, float[][] y)
+  {
+    _rgf = getRgf();
+    applyForAngle(_rgf,_fx,xa,xb,xc,y);
   }
 
   /**
@@ -265,6 +286,8 @@ public class BilateralFilter {
       fx = new HuberFunction(sigma); 
     } else if (type==Type.TUKEY) {
       fx = new TukeyFunction(sigma);
+    } else if (type==Type.TUKEY_ANGLE) {
+      fx = new TukeyAngleFunction(sigma);
     }
     int nx = sx.getCount();
     float[] f = new float[nx];
@@ -346,6 +369,23 @@ public class BilateralFilter {
     }
     private float _sigma;
     private float _scale; 
+  }
+  private static class TukeyAngleFunction implements Fx {
+    public TukeyAngleFunction(double sigma) {
+      _tukey = new TukeyFunction(sigma);
+      _sigma = _tukey.getSigma();
+    }
+    public float eval(float x) {
+      return _tukey.eval(x)+_tukey.eval(x+FLT_PI)+_tukey.eval(x-FLT_PI);
+    }
+    public float getSigma() {
+      return _tukey.getSigma();
+    }
+    public void setSigma(double sigma) {
+      _tukey.setSigma(sigma);
+    }
+    private float _sigma;
+    private TukeyFunction _tukey;
   }
 
   // Interfaces and abstract class for spatial filters.
@@ -518,6 +558,56 @@ public class BilateralFilter {
       copy(tn,tt); f2.apply(tt,tn);
       copy(td,tt); f2.apply(tt,td);
       accum(xk,dx,xa,tn,td,yn,yd);
+    }
+    div(yn,yd,y);
+  }
+  private static void applyABC(F2 f2, Fx fx, 
+    float[][] xa, float[][] xb, float[][] xc, float[][] y) 
+  {
+    // xa: gradient angles
+    // xb: reference angles
+    // xc: image
+    int n2 = xa.length;
+    int n1 = xa[0].length;
+    float[][] yn = new float[n2][n1];
+    float[][] yd = new float[n2][n1];
+    float[][] tn = new float[n2][n1];
+    float[][] td = new float[n2][n1];
+    float[][] tt = y;
+    Sampling sx = samplingX(xa,fx);
+    //Sampling sx = samplingX(xb,fx);
+    float dx = (float)sx.getDelta();
+    int nx = sx.getCount();
+    for (int kx=0; kx<nx; ++kx) {
+      float xk = (float)sx.getValue(kx);
+      scale(fx,xk,xa,xc,tn,td);
+      copy(tn,tt); f2.apply(tt,tn);
+      copy(td,tt); f2.apply(tt,td);
+      accum(xk,dx,xb,tn,td,yn,yd);
+    }
+    div(yn,yd,y);
+  }
+  private static void applyForAngle(F2 f2, Fx fx, 
+    float[][] xa, float[][] xb, float[][] xc, float[][] y) 
+  {
+    int n2 = xa.length;
+    int n1 = xa[0].length;
+    float[][] yn = new float[n2][n1];
+    float[][] yd = new float[n2][n1];
+    float[][] tn = new float[n2][n1];
+    float[][] td = new float[n2][n1];
+    float[][] tt = y;
+    Sampling sx = samplingX(xa,fx);
+    //Sampling sx = samplingX(xb,fx);
+    float dx = (float)sx.getDelta();
+    int nx = sx.getCount();
+    for (int kx=0; kx<nx; ++kx) {
+      float xk = (float)sx.getValue(kx);
+      // TODO: change scale, change accum?
+      scale(fx,xk,xa,xc,tn,td);
+      copy(tn,tt); f2.apply(tt,tn);
+      copy(td,tt); f2.apply(tt,td);
+      accum(xk,dx,xb,tn,td,yn,yd);
     }
     div(yn,yd,y);
   }

@@ -45,8 +45,8 @@ from util import FakeData
 
 #############################################################################
 
-pngDir = "./png/geop"
-#pngDir = None
+#pngDir = "./png/geop"
+pngDir = None
 
 seed = abs(Random().nextInt()/1000000)
 seed = 580
@@ -74,9 +74,14 @@ def main(args):
   #goFaultShifts()
   #goOzImages()
   #goOzTeaser()
-  goOzFiguresFgus()
-  goOzFiguresNpass()
-  goOzFiguresDtwUv()
+  #goOzFiguresFgus()
+  #goOzFiguresNpass()
+  #goOzFiguresDtwUv()
+
+  n1,n2 = 462,951; f = readImage("/data/seis/f3d/f3d75.dat",n1,n2)
+  plot = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  pixel = plot.addPixels(f)
+  pixel.setPercentiles(0.5,99.5)
 
 def goOzTeaser():
   global stretchMax1,stretchMax2,smoothShifts,nrms,teaser
